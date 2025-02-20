@@ -1,0 +1,108 @@
+---
+title: "HW-4"
+author: "Hannah Lim"
+date: "2025-02-20"
+output: pdf_document
+---
+# UT EID:
+hl33387
+
+# GitHub Link:
+https://github.com/hannahlim506/HW-2 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(mosaic)
+library(tidyverse)
+library(kableExtra)
+
+letter_frequencies = read.csv("letter_frequencies.csv")
+brown_sentences <- readLines("brown_sentences.txt")
+```
+
+## Question 1:
+The null hypothesis which was tested was that in the long run, securities trades from the Iron Bank are flagged at the same 2.4% baseline rate as that of other traders. The test statistic given was that out of 2021 trades, 70 were flagged. The p-value was 0.00188. The observed data resulted in a flagged rate of about 0.03463 compared to the 2.4% baseline rate. This shows that the observed data is not that consistent with Iron Bank's null hypothesis.
+```{r}
+sim_sec = do(100000)*nflip(n=2021, prob=0.024)
+
+ggplot(sim_sec) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Iron Bank")
+
+#p-value:
+sum(sim_sec >= 70)/100000
+```
+
+## Question 2:
+The null hypothesis which is being tested is that on average, restaurants in the city are cited for health code violations as the same 3% baseline rate. The test statistic was from the 50 inspections of Gourmet Bites, which resulted in 8 health code violations reported. The p-value was 0.00013. The observed data for Gourmet Bites is not consistent  with the Health Department's null hypothesis. This makes sense because 8 health violation reports out of 50 inspections is a lot more than the 3% baseline rate.
+```{r}
+sim_health = do(100000)*nflip(n=50, prob=0.03)
+
+ggplot(sim_health) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Health Inspections")
+
+#p-value
+sum(sim_health >= 8)/100000
+```
+
+## Question 3:
+The null hypothesis of this question is that the distribution of jurors empanelled by this judge is different from the country's population proportions. The test statistics were: group 1 had 85 jurors out of 240, group 2 had 56 jurors out of 240, group 3 had 59 jurors out of 240, group 4 had 27 jurors out of 240, and group 5 had 13 jurors out of 240. The p-values were, in order, 0.04108, 0.74339, 0.04684, 0.96216, and 0.99603. Since all of the p-values are greater than or close to 0.05, this shows that there is most likely systematic bias in jury selection. This might be because certain demographics could be automatically exempt from jury service or excused for hardship. To investigate further, one could look into the probability without the exempted and excused.
+```{r}
+sim_one = do(100000)*nflip(n=240, prob=0.3)
+sim_two = do(100000)*nflip(n=240, prob=0.25)
+sim_three = do(100000)*nflip(n=240, prob=0.2)
+sim_four = do(100000)*nflip(n=240, prob=0.15)
+sim_five = do(100000)*nflip(n=240, prob=0.1)
+
+ggplot(sim_one) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Group One")
+ggplot(sim_two) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Group Two")
+ggplot(sim_three) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Group Three")
+ggplot(sim_four) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Group Four")
+ggplot(sim_five) + geom_histogram(aes(x=nflip), binwidth = 0.5) + labs(title = "Group Five")
+
+sum(sim_one >= 85)/100000
+sum(sim_two >= 56)/100000
+sum(sim_three >= 59)/100000
+sum(sim_four >= 27)/100000
+sum(sim_five >= 13)/100000
+```
+
+## Question 4:
+# Part A:
+The calculated chi-squared across the collection of English sentences extracted from the Brown Corpus was 27.56914.
+```{r}
+calculate_chi_squared = function(sentence, freq_table) {
+  freq_table$Probability = freq_table$Probability / sum(freq_table$Probability)
+  clean_sentence = gsub("[^A-Za-z]", "", sentence)
+  clean_sentence = toupper(clean_sentence)
+  observed_counts = table(factor(strsplit(clean_sentence, "")[[1]], levels = freq_table$Letter))
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * freq_table$Probability
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  return(chi_squared_stat)
+}
+
+calculate_chi_squared(brown_sentences, letter_frequencies)
+```
+
+# Part B:
+The sentence which was most likely produced by an LLM, but watermarked by asking the LLM to adjust its frequency distribution over letters was "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland." This is because the p-value was 0.000 (rounded to three decimal places). This is very unlikely for a regular sentence to be spoken as the distribution of letters is more balanced.
+```{r}
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+my_list <- list()
+for (sentence in sentences) {
+  my_list[[sentence]] <- round(pchisq(q = calculate_chi_squared(sentence, letter_frequencies), df=25, lower.tail=FALSE), 3)
+}
+haha <- data.frame(sapply(my_list,c))
+kable(haha, col.names = c("Sentence", "p-value"))
+```
